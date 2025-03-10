@@ -2,9 +2,27 @@
 let OPENAI_API_KEY = '';
 
 // Load API key from storage
-chrome.storage.local.get(['openai_api_key'], (result) => {
-  if (result.openai_api_key) {
-    OPENAI_API_KEY = result.openai_api_key;
+function loadApiKey() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['openai_api_key'], (result) => {
+      if (result.openai_api_key) {
+        OPENAI_API_KEY = result.openai_api_key;
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+  });
+}
+
+// Initialize by loading API key
+loadApiKey();
+
+// Listen for API key updates
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'updateApiKey') {
+    OPENAI_API_KEY = request.apiKey;
+    return true;
   }
 });
 
@@ -63,8 +81,13 @@ Generate 3 different comment options.`;
 
 // Call OpenAI API
 async function generateAIComments(content, tone, options) {
+  // Check if API key is set
   if (!OPENAI_API_KEY) {
-    throw new Error('OpenAI API key not set. Please set it in the extension options.');
+    // Try loading the API key again
+    const keyLoaded = await loadApiKey();
+    if (!keyLoaded) {
+      throw new Error('OpenAI API key not set. Please set it in the extension options.');
+    }
   }
 
   try {
@@ -87,9 +110,9 @@ async function generateAIComments(content, tone, options) {
           }
         ],
         temperature: 0.7,
-        max_tokens: Math.min(500, Math.ceil(options.characterLimit * 1.5)), // Adjust tokens based on character limit
-        presence_penalty: 0.6, // Encourage more diverse responses
-        frequency_penalty: 0.5 // Reduce repetition
+        max_tokens: Math.min(500, Math.ceil(options.characterLimit * 1.5)),
+        presence_penalty: 0.6,
+        frequency_penalty: 0.5
       })
     });
 
@@ -103,7 +126,6 @@ async function generateAIComments(content, tone, options) {
       .split('\n')
       .filter(line => line.trim() && !line.startsWith('Comment') && !line.startsWith('-'))
       .map(comment => {
-        // Ensure comment length is within limit
         let processedComment = comment.trim();
         if (processedComment.length > options.characterLimit) {
           processedComment = processedComment.substring(0, options.characterLimit - 3) + '...';
