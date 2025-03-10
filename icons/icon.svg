@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#0066ff"/>
+  
+  <!-- Chat bubble -->
+  <path d="M94 42H34c-2.2 0-4 1.8-4 4v36c0 2.2 1.8 4 4 4h12l8 12 8-12h32c2.2 0 4-1.8 4-4V46c0-2.2-1.8-4-4-4z" fill="white"/>
+  
+  <!-- AI nodes -->
+  <circle cx="48" cy="64" r="4" fill="#0066ff"/>
+  <circle cx="64" cy="64" r="4" fill="#0066ff"/>
+  <circle cx="80" cy="64" r="4" fill="#0066ff"/>
+  
+  <!-- Connection lines -->
+  <line x1="48" y1="64" x2="64" y2="64" stroke="#0066ff" stroke-width="2"/>
+  <line x1="64" y1="64" x2="80" y2="64" stroke="#0066ff" stroke-width="2"/>
+</svg> 
