@@ -18,6 +18,7 @@
     "default_popup": "popup.html",
     "default_icon": "icons/icon128.png"
   },
+  "options_page": "options.html",
   "background": {
     "service_worker": "background.js",
     "type": "module"
