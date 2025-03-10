@@ -17,13 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
     'addEmojis',
     'addHashtags',
     'characterLimit',
-    'lastTone'
+    'lastTone',
+    'openai_api_key'
   ], (result) => {
     if (result.language) languageSelector.value = result.language;
     if (typeof result.addEmojis !== 'undefined') addEmojis.checked = result.addEmojis;
     if (typeof result.addHashtags !== 'undefined') addHashtags.checked = result.addHashtags;
     if (result.characterLimit) characterLimit.value = result.characterLimit;
     if (result.lastTone) toneSelector.value = result.lastTone;
+    
+    // Check if API key is set
+    if (!result.openai_api_key) {
+      showError('OpenAI API key not set. Please click the settings icon (⚙️) and set your API key first.');
+      generateBtn.disabled = true;
+    }
   });
 
   // Toggle advanced options
@@ -54,13 +61,19 @@ document.addEventListener('DOMContentLoaded', () => {
     showLoading(true);
     
     try {
+      // Check if API key is set
+      const { openai_api_key } = await chrome.storage.local.get(['openai_api_key']);
+      if (!openai_api_key) {
+        throw new Error('OpenAI API key not set. Please click the settings icon (⚙️) and set your API key first.');
+      }
+
       // Get the current tab to communicate with content script
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
       // Request post content from content script
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPostContent' });
       
-      if (response.content) {
+      if (response && response.content) {
         // Send content to background script for AI processing
         const comments = await chrome.runtime.sendMessage({
           action: 'generateComments',
@@ -77,14 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Array.isArray(comments)) {
           displayComments(comments);
         } else if (comments.error) {
-          showError(comments.error);
+          showError(`Error: ${comments.error}`);
         }
       } else {
         showError('Could not extract post content. Please make sure you\'re on a supported social media post.');
       }
     } catch (error) {
-      showError('An error occurred while generating comments. Please try again.');
       console.error('Error:', error);
+      showError(error.message || 'An error occurred while generating comments. Please try again.');
     } finally {
       showLoading(false);
     }
@@ -118,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (response.success) {
             window.close(); // Close popup after successful insertion
           } else {
-            throw new Error('Failed to insert comment');
+            throw new Error(response.error || 'Failed to insert comment');
           }
         } catch (error) {
           showError('Failed to insert comment. Please try again.');
