@@ -4,9 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusDiv = document.getElementById('status');
 
   // Load saved API key
-  chrome.storage.local.get(['openai_api_key'], (result) => {
-    if (result.openai_api_key) {
-      apiKeyInput.value = result.openai_api_key;
+  chrome.storage.local.get(['huggingface_api_key'], (result) => {
+    if (result.huggingface_api_key) {
+      apiKeyInput.value = result.huggingface_api_key;
     }
   });
 
@@ -19,12 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!apiKey.startsWith('sk-')) {
-      showStatus('Invalid API key format. API key should start with "sk-"', 'error');
-      return;
-    }
-
-    chrome.storage.local.set({ openai_api_key: apiKey }, () => {
+    chrome.storage.local.set({ huggingface_api_key: apiKey }, () => {
       showStatus('API key saved successfully!', 'success');
       // Notify background script to update the API key
       chrome.runtime.sendMessage({ action: 'updateApiKey', apiKey });

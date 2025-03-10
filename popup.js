@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'addHashtags',
     'characterLimit',
     'lastTone',
-    'openai_api_key'
+    'huggingface_api_key'
   ], (result) => {
     if (result.language) languageSelector.value = result.language;
     if (typeof result.addEmojis !== 'undefined') addEmojis.checked = result.addEmojis;
@@ -27,8 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.lastTone) toneSelector.value = result.lastTone;
     
     // Check if API key is set
-    if (!result.openai_api_key) {
-      showError('OpenAI API key not set. Please click the settings icon (⚙️) and set your API key first.');
+    if (!result.huggingface_api_key) {
+      showError('Hugging Face API key not set. Please click the settings icon (⚙️) and set your API key first.');
       generateBtn.disabled = true;
     }
   });
@@ -76,9 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     try {
       // Check if API key is set
-      const { openai_api_key } = await chrome.storage.local.get(['openai_api_key']);
-      if (!openai_api_key) {
-        throw new Error('OpenAI API key not set. Please click the settings icon (⚙️) and set your API key first.');
+      const { huggingface_api_key } = await chrome.storage.local.get(['huggingface_api_key']);
+      if (!huggingface_api_key) {
+        throw new Error('Hugging Face API key not set. Please click the settings icon (⚙️) and set your API key first.');
       }
 
       // Get the current tab

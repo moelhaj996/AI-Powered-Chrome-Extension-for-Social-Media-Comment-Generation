@@ -77,6 +77,21 @@
       color: #721c24;
       border: 1px solid #f5c6cb;
     }
+
+    .help-text {
+      font-size: 14px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .link {
+      color: #0066ff;
+      text-decoration: none;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -84,8 +99,12 @@
     <h1>AI Comment Generator Settings</h1>
     
     <div class="form-group">
-      <label for="apiKey">OpenAI API Key:</label>
-      <input type="text" id="apiKey" placeholder="Enter your OpenAI API key (starts with 'sk-')">
+      <label for="apiKey">Hugging Face API Key:</label>
+      <input type="text" id="apiKey" placeholder="Enter your Hugging Face API key">
+      <p class="help-text">
+        Don't have an API key? Get one for free at 
+        <a href="https://huggingface.co/settings/tokens" target="_blank" class="link">Hugging Face</a>
+      </p>
     </div>
 
     <button id="save" class="save-btn">Save Settings</button>

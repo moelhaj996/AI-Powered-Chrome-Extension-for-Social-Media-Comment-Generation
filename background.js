@@ -1,12 +1,12 @@
 // Store API key in chrome.storage
-let OPENAI_API_KEY = '';
+let HUGGINGFACE_API_KEY = '';
 
 // Load API key from storage
 function loadApiKey() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['openai_api_key'], (result) => {
-      if (result.openai_api_key) {
-        OPENAI_API_KEY = result.openai_api_key;
+    chrome.storage.local.get(['huggingface_api_key'], (result) => {
+      if (result.huggingface_api_key) {
+        HUGGINGFACE_API_KEY = result.huggingface_api_key;
         resolve(true);
       } else {
         resolve(false);
@@ -21,7 +21,7 @@ loadApiKey();
 // Listen for API key updates
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'updateApiKey') {
-    OPENAI_API_KEY = request.apiKey;
+    HUGGINGFACE_API_KEY = request.apiKey;
     return true;
   }
 });
@@ -79,50 +79,46 @@ Requirements:
 Generate 3 different comment options.`;
 }
 
-// Call OpenAI API
+// Call Hugging Face API
 async function generateAIComments(content, tone, options) {
   // Check if API key is set
-  if (!OPENAI_API_KEY) {
+  if (!HUGGINGFACE_API_KEY) {
     // Try loading the API key again
     const keyLoaded = await loadApiKey();
     if (!keyLoaded) {
-      throw new Error('OpenAI API key not set. Please set it in the extension options.');
+      throw new Error('Hugging Face API key not set. Please set it in the extension options.');
     }
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api-inference.huggingface.co/models/meta-llama/Llama-2-70b-chat-hf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a social media expert who writes engaging, contextually appropriate comments in ${options.language}.`
-          },
-          {
-            role: 'user',
-            content: generatePrompt(content, tone, options)
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: Math.min(500, Math.ceil(options.characterLimit * 1.5)),
-        presence_penalty: 0.6,
-        frequency_penalty: 0.5
+        inputs: generatePrompt(content, tone, options),
+        parameters: {
+          max_new_tokens: Math.min(500, Math.ceil(options.characterLimit * 1.5)),
+          temperature: 0.7,
+          top_p: 0.9,
+          repetition_penalty: 1.2,
+          do_sample: true
+        }
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.message || 'API request failed');
+      throw new Error(errorData.error || 'API request failed');
     }
 
     const data = await response.json();
-    const comments = data.choices[0].message.content
+    const generatedText = data[0].generated_text;
+    
+    // Extract the three comments from the generated text
+    const comments = generatedText
       .split('\n')
       .filter(line => line.trim() && !line.startsWith('Comment') && !line.startsWith('-'))
       .map(comment => {
@@ -131,11 +127,12 @@ async function generateAIComments(content, tone, options) {
           processedComment = processedComment.substring(0, options.characterLimit - 3) + '...';
         }
         return processedComment;
-      });
+      })
+      .slice(0, 3); // Ensure we only get 3 comments
 
     return comments;
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error calling Hugging Face API:', error);
     throw error;
   }
 }
