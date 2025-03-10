@@ -1,34 +1,68 @@
 // Platform-specific selectors for post content
 const PLATFORM_SELECTORS = {
   twitter: {
-    post: '[data-testid="tweetText"]',
-    commentBox: '[data-testid="tweetTextarea_0"]',
-    alternatePost: '.tweet-text, [data-testid="tweet"] article'
+    post: [
+      '[data-testid="tweetText"]',
+      '.tweet-text',
+      '[data-testid="tweet"] article',
+      '.css-1dbjc4n [lang]',
+      '[data-testid="tweet"] [lang]'
+    ],
+    commentBox: '[data-testid="tweetTextarea_0"], [contenteditable="true"]'
   },
   instagram: {
-    post: 'h1._aacl._aaco._aacu._aacx._aad7._aade, ._a9zs, article ._aagv',
-    commentBox: '._aaoc textarea, form textarea',
-    alternatePost: '._a9zs'
+    post: [
+      'h1._aacl._aaco._aacu._aacx._aad7._aade',
+      '._a9zs',
+      'article ._aagv',
+      '._aa6e',
+      '._a9zr ._a9zs'
+    ],
+    commentBox: '._aaoc textarea, form textarea, ._akhn'
   },
   facebook: {
-    post: '[data-ad-preview="message"], .userContent, ._5pbx, ._5rgt',
-    commentBox: 'form.commentable_item textarea, .UFIAddCommentInput ._1p1v',
-    alternatePost: '._5pbx p, ._5rgt._5nk5'
+    post: [
+      '[data-ad-preview="message"]',
+      '.userContent',
+      '._5pbx',
+      '._5rgt',
+      '.kvgmc6g5',
+      '[data-ad-comet-preview="message"]',
+      '.ecm0bbzt'
+    ],
+    commentBox: 'form.commentable_item textarea, .notranslate._5yk2, [contenteditable="true"]'
   },
   linkedin: {
-    post: '.feed-shared-update-v2__description-wrapper span.break-words, .feed-shared-text-view, .feed-shared-article__description-container',
-    commentBox: '.comments-comment-box__form-container .ql-editor, .comments-comment-texteditor__content',
-    alternatePost: '.feed-shared-text'
+    post: [
+      '.feed-shared-update-v2__description-wrapper span.break-words',
+      '.feed-shared-text-view',
+      '.feed-shared-article__description-container',
+      '.feed-shared-text',
+      '.feed-shared-update-v2__commentary'
+    ],
+    commentBox: '.comments-comment-box__form-container .ql-editor, .comments-comment-texteditor__content'
   },
   reddit: {
-    post: '.Post h1, .Post h2, .Post p, [data-test-id="post-content"]',
-    commentBox: '.commentarea textarea, .LinkCommentTextArea__textarea',
-    alternatePost: '.entry .usertext-body'
+    post: [
+      '.Post h1',
+      '.Post h2',
+      '.Post p',
+      '[data-test-id="post-content"]',
+      '.entry .usertext-body',
+      '.title.may-blank',
+      '.expando'
+    ],
+    commentBox: '.commentarea textarea, .LinkCommentTextArea__textarea, .public-DraftEditor-content'
   },
   youtube: {
-    post: '#content-text, .ytd-video-secondary-info-renderer',
-    commentBox: '#simplebox-placeholder, #contenteditable-textarea',
-    alternatePost: '.watch-description-text'
+    post: [
+      '#content-text',
+      '.ytd-video-secondary-info-renderer',
+      '#description',
+      '.ytd-expander.ytd-video-secondary-info-renderer',
+      '#description-inline-expander'
+    ],
+    commentBox: '#simplebox-placeholder, #contenteditable-textarea, #contenteditable-root'
   }
 };
 
@@ -44,42 +78,60 @@ function detectPlatform() {
   return null;
 }
 
-// Extract post content with fallback options
+// Extract post content with improved fallback options
 function extractPostContent() {
   const platform = detectPlatform();
-  if (!platform) return null;
-
-  const selectors = PLATFORM_SELECTORS[platform];
-  let postElement = document.querySelector(selectors.post);
-  
-  // Try alternate selector if primary fails
-  if (!postElement && selectors.alternatePost) {
-    postElement = document.querySelector(selectors.alternatePost);
+  if (!platform) {
+    console.log('Platform not detected:', window.location.hostname);
+    return null;
   }
-  
+
+  console.log('Detected platform:', platform);
+  const selectors = PLATFORM_SELECTORS[platform];
+  let postElement = null;
+  let usedSelector = '';
+
+  // Try all possible selectors for the platform
+  for (const selector of selectors.post) {
+    postElement = document.querySelector(selector);
+    if (postElement) {
+      usedSelector = selector;
+      console.log('Found content using selector:', selector);
+      break;
+    }
+  }
+
   // Try to find content in parent elements if direct selectors fail
   if (!postElement) {
-    const possibleElements = document.querySelectorAll('article p, article div, .post-content');
+    console.log('Trying fallback content detection...');
+    const possibleElements = document.querySelectorAll('article p, article div, .post-content, [role="article"] p, [role="article"] div');
     for (const element of possibleElements) {
       const text = element.textContent.trim();
-      if (text.length > 20) { // Assume it's the main content if it has substantial text
+      if (text.length > 20) {
         postElement = element;
+        usedSelector = 'fallback';
+        console.log('Found content using fallback method');
         break;
       }
     }
   }
-  
-  if (!postElement) return null;
-  
+
+  if (!postElement) {
+    console.log('No content found with any selector');
+    return null;
+  }
+
   // Clean up the extracted text
   let content = postElement.textContent.trim();
-  
+  console.log('Raw content:', content);
+
   // Remove common social media artifacts
   content = content
     .replace(/(?:https?|ftp):\/\/[\n\S]+/g, '') // Remove URLs
     .replace(/\s+/g, ' ') // Normalize whitespace
     .trim();
-  
+
+  console.log('Cleaned content:', content);
   return content;
 }
 
@@ -93,14 +145,21 @@ async function insertComment(comment) {
   
   // Retry a few times if the comment box is not immediately available
   if (!commentBox) {
+    console.log('Comment box not found, retrying...');
     for (let i = 0; i < 3; i++) {
       await new Promise(resolve => setTimeout(resolve, 500));
       commentBox = document.querySelector(selector);
-      if (commentBox) break;
+      if (commentBox) {
+        console.log('Found comment box on retry', i + 1);
+        break;
+      }
     }
   }
   
-  if (!commentBox) return false;
+  if (!commentBox) {
+    console.log('Comment box not found after retries');
+    return false;
+  }
 
   try {
     // Handle different platforms' comment box behaviors
@@ -131,6 +190,7 @@ async function insertComment(comment) {
         break;
     }
 
+    console.log('Successfully inserted comment');
     return true;
   } catch (error) {
     console.error('Error inserting comment:', error);
@@ -148,18 +208,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         break;
 
       case 'getPostContent':
+        console.log('Attempting to extract post content...');
         const content = extractPostContent();
         if (!content) {
+          console.log('No content found');
           sendResponse({ 
             content: null, 
             error: 'Could not find post content. Please make sure you\'re on a supported social media post.' 
           });
         } else {
+          console.log('Successfully extracted content');
           sendResponse({ content, error: null });
         }
         break;
         
       case 'insertComment':
+        console.log('Attempting to insert comment...');
         insertComment(request.comment).then(success => {
           sendResponse({ 
             success, 
