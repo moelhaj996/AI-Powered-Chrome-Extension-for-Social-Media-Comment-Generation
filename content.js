@@ -140,26 +140,37 @@ async function insertComment(comment) {
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  switch (request.action) {
-    case 'getPostContent':
-      try {
+  try {
+    switch (request.action) {
+      case 'ping':
+        // Respond to ping to confirm content script is loaded
+        sendResponse({ success: true });
+        break;
+
+      case 'getPostContent':
         const content = extractPostContent();
-        sendResponse({ content, error: content ? null : 'Could not extract post content' });
-      } catch (error) {
-        console.error('Error extracting content:', error);
-        sendResponse({ content: null, error: 'Error extracting content' });
-      }
-      break;
-      
-    case 'insertComment':
-      try {
-        const success = insertComment(request.comment);
-        sendResponse({ success, error: success ? null : 'Could not insert comment' });
-      } catch (error) {
-        console.error('Error inserting comment:', error);
-        sendResponse({ success: false, error: 'Error inserting comment' });
-      }
-      break;
+        if (!content) {
+          sendResponse({ 
+            content: null, 
+            error: 'Could not find post content. Please make sure you\'re on a supported social media post.' 
+          });
+        } else {
+          sendResponse({ content, error: null });
+        }
+        break;
+        
+      case 'insertComment':
+        insertComment(request.comment).then(success => {
+          sendResponse({ 
+            success, 
+            error: success ? null : 'Could not find comment box. Please make sure you\'re on a supported social media post.' 
+          });
+        });
+        break;
+    }
+  } catch (error) {
+    console.error('Error in content script:', error);
+    sendResponse({ error: error.message });
   }
   
   return true; // Required for async response

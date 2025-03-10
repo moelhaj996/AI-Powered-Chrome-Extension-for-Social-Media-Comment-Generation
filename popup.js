@@ -56,6 +56,20 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.runtime.openOptionsPage();
   });
 
+  // Inject content script if needed
+  async function ensureContentScriptInjected(tab) {
+    try {
+      // Try to send a test message to check if content script is loaded
+      await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+    } catch (error) {
+      // If content script is not loaded, inject it
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+    }
+  }
+
   generateBtn.addEventListener('click', async () => {
     const tone = toneSelector.value;
     showLoading(true);
@@ -67,9 +81,12 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('OpenAI API key not set. Please click the settings icon (⚙️) and set your API key first.');
       }
 
-      // Get the current tab to communicate with content script
+      // Get the current tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
+      // Ensure content script is injected
+      await ensureContentScriptInjected(tab);
+
       // Request post content from content script
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPostContent' });
       
@@ -97,7 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (error) {
       console.error('Error:', error);
-      showError(error.message || 'An error occurred while generating comments. Please try again.');
+      if (error.message.includes('Cannot establish connection')) {
+        showError('Please refresh the page and try again.');
+      } else {
+        showError(error.message || 'An error occurred while generating comments. Please try again.');
+      }
     } finally {
       showLoading(false);
     }
@@ -123,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       insertBtn.onclick = async () => {
         try {
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          await ensureContentScriptInjected(tab);
           const response = await chrome.tabs.sendMessage(tab.id, {
             action: 'insertComment',
             comment: comment
@@ -134,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error(response.error || 'Failed to insert comment');
           }
         } catch (error) {
-          showError('Failed to insert comment. Please try again.');
+          showError('Failed to insert comment. Please refresh the page and try again.');
         }
       };
       
